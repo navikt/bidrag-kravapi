@@ -7,14 +7,14 @@
             "name": "NAV - Team Bidrag",
             "url": "https://github.com/navikt/bidrag-kravapi-stub"
         },
-        "version": "0.1"
+        "version": "0.2"
     },
     "paths": {
         "/api/krav": {
             "post": {
                 "tags": ["krav-controller"],
                 "summary": "Sende krav",
-                "description": "Operasjon for å levere krav fra NAV til regnskapet hos Skatteetaten. Et krav består av en liste med konteringer. Det forventes at disse konteringen behandles samlet. Det vil si at hvis én av konteringene feiler, skal ingen av konteringene i kravet benyttes.\n\nDersom et krav feiler kan det forsøkes overført på nytt gjentatte ganger inntil kravet er overført.Krav som gjelder samme fagsak må leveres i korrekt rekkefølge. Feiler et krav i en sak, skal ikke senere krav i samme sak overføres. Senere krav i andre saker kan overføres, selv om noen av partene fra den feilende fagsaken er involvert.\n\nTODO: Det forventes at et krav alltid inneholder de samme konteringene?? Dersom et nytt vedtak fører til et nytt krav som venter på et tidligere feilende krav, skal ikke konteringene fra det seneste kravet slås sammen med det ventende kravet.\n\nNAV har ansvar for å manuelt følge opp krav som ved flere forsøk ikke kan overføres, og vil løse opp i problemet i samarbeid med Skatteetaten.\n\nVed månedlig påløp skal ikke dette grensesnittet benyttes. Tilsvarende krav legges i stedet inn i en fil som overføres til Skatteetaten gjennom filslusa.\n\nTODO: Formatet på påløpsfilen skal være tilsvarende det nye grensesnittet, men hvor hvert krav legges inn på egen linje. Alternativt kan gammelt xml-format benyttes, men uten kontaktinformasjon (br20, br30, br40 og br50).",
+                "description": "Operasjon for å levere krav fra NAV til regnskapet hos Skatteetaten. Et krav består av en liste med konteringer. Det forventes at disse konteringen behandles samlet. Det vil si at hvis én av konteringene feiler, skal ingen av konteringene i kravet benyttes.\n\nDersom et krav feiler kan det forsøkes overført på nytt gjentatte ganger inntil kravet er overført. Krav som gjelder samme fagsak må leveres i korrekt rekkefølge. Feiler et krav i en sak, skal ikke senere krav i samme sak overføres. Senere krav i andre saker kan overføres, selv om noen av partene fra den feilende fagsaken er involvert.\n\nDet forventes at et krav alltid inneholder de samme konteringene. Dersom et nytt vedtak fører til et nytt krav som venter på et tidligere feilende krav, skal ikke konteringene fra det seneste kravet slås sammen med det ventende kravet.\n\nNAV har ansvar for å manuelt følge opp krav som ved flere forsøk ikke kan overføres, og vil løse opp i problemet i samarbeid med Skatteetaten.\n\nVed månedlig påløp skal ikke dette grensesnittet benyttes. Tilsvarende krav legges i stedet inn i en fil som overføres til Skatteetaten gjennom filslusa.\n\nFormatet på påløpsfilen skal være tilsvarende det nye grensesnittet, men hvor hvert krav legges inn på egen linje.",
                 "operationId": "lagreKrav",
                 "requestBody": {
                     "content": {
@@ -371,7 +371,7 @@
                         }
                     },
                     "200": {
-                        "description": "Alle konteringene i kravet er oppdatert OK. Responsen har tom body.",
+                        "description": "Alle konteringene i kravet er oppdatert OK. Responsen har tom body.\n\nDet forventes også responskode 200 dersom kravet (og dermed konteringene) er overført tidligere. Det forventes da at kravet ignoreres slik at ikke konteringene posteres dobbelt.",
                         "content": {
                             "application/json": {}
                         }
@@ -443,7 +443,7 @@
                 "description": "Lister feil i et krav."
             },
             "Kontering": {
-                "required": ["attestantId", "belop", "delytelsesId", "fagsystemId", "gjelderIdent", "kravhaverIdent", "mottakerIdent", "periode", "saksbehandlerId", "skyldnerIdent", "transaksjonskode", "type", "valuta", "vedtaksdato"],
+                "required": ["attestantId", "belop", "delytelsesId", "fagsystemId", "gjelderIdent", "kjoredato", "mottakerIdent", "periode", "saksbehandlerId", "skyldnerIdent", "transaksjonskode", "type", "valuta", "vedtaksdato"],
                 "type": "object",
                 "properties": {
                     "transaksjonskode": {
@@ -453,7 +453,7 @@
                     },
                     "type": {
                         "type": "string",
-                        "description": "TODO: Konteringstypen er NY for nye konteringer. Dersom en kontering skal reverseres benyttes ENDRING for B3-konteringen og for alle påfølgende B1-konteringer.",
+                        "description": "Konteringstypen er NY for nye konteringer for en stønad i en periode. Deretter skal alle konteringer for samme stønad i samme periode markere ENDRING, altså B3-konteringen og for alle påfølgende B1-konteringer.",
                         "example": "NY",
                         "enum": ["NY", "ENDRING"]
                     },
@@ -471,22 +471,22 @@
                     },
                     "gjelderIdent": {
                         "type": "string",
-                        "description": "Personident (FNR/DNR/BNR/NPID) til bidragsmottaker i saken.",
+                        "description": "Personident (FNR/DNR) til bidragsmottaker i bidragssaken. I saker der bidragsmottaker ikke er satt benyttes et dummynr 22222222226",
                         "example": "15878598161"
                     },
                     "kravhaverIdent": {
                         "type": "string",
-                        "description": "Personident (FNR/DNR/BNR/NPID) eller aktoernummer (TSS-ident/samhandler) til kravhaver.\n\nTODO: Angis kravhaver alltid? Også for f.eks gebyr?",
+                        "description": "Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til kravhaver.\n\nKravhaver angis ikke for gebyr.",
                         "example": "14871298182"
                     },
                     "mottakerIdent": {
                         "type": "string",
-                        "description": "Personident (FNR/DNR/BNR/NPID) eller aktoernummer (TSS-ident/samhandler) til mottaker av kravet.",
+                        "description": "Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til mottaker av kravet.\n\nFor gebyr settes mottakerIdent til NAVs aktoernummer 80000345435.",
                         "example": "15878598161"
                     },
                     "skyldnerIdent": {
                         "type": "string",
-                        "description": "Personident (FNR/DNR/BNR/NPID) eller aktoernummer (TSS-ident/samhandler) til skyldner. For Bidrag er dette BP i saken. For Forskudd er det NAV.",
+                        "description": "Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til skyldner. For Bidrag er dette BP i saken.\n\nFor forskudd settes skyldnerIdent til NAVs aktoernummer 80000345435.",
                         "example": "28848596401"
                     },
                     "belop": {
@@ -512,6 +512,12 @@
                         "format": "date",
                         "example": "2022-03-18"
                     },
+                    "kjoredato": {
+                        "type": "string",
+                        "description": "Datoen kravet/konteringen gjøres klart for overføring. For direkteoverførte online-vedtak blir datoen sannsynligvis det samme som vedtaksdato. For påløp blir datoen satt til dagen påløpet genereres.",
+                        "format": "date",
+                        "example": "2022-03-18"
+                    },
                     "saksbehandlerId": {
                         "type": "string",
                         "description": "NAVs brukerid for saksbehandler som har fattet vedtaket",
@@ -529,16 +535,16 @@
                     },
                     "fagsystemId": {
                         "type": "string",
-                        "description": "Bidragssakens saksnummer.\n\nTODO: Integer, ikke String??",
+                        "description": "Bidragssakens saksnummer angitt som String.",
                         "example": "2201234"
                     },
                     "delytelsesId": {
                         "type": "string",
-                        "description": "Unik referanse til perioden i vedtaket. I bidragssaken kan en periode strekke over flere måneder, og samme referanse blir da benyttet for alle månedene. Samme referanse kan ikke benyttes to ganger for samme transaksjonskode i samme måned. (TODO: Med mindre kontigeringkoden er endring??)\n\nTODO: Integer, ikke String?",
+                        "description": "Unik referanse til perioden i vedtaket angitt som String. I bidragssaken kan en periode strekke over flere måneder, og samme referanse blir da benyttet for alle månedene. Samme referanse kan ikke benyttes to ganger for samme transaksjonskode i samme måned.",
                         "example": "123456789"
                     }
                 },
-                "description": "En kontering angir hvor mye som skal betales av skyldner til mottaker på vegne av kravhaver.\n\nKonteringen kan unikt identifiseres med kombinasjonen transaksjonskode, delytelsesId og periode. Det forutsettes at delytelsesid'n er unik også på tvers av fagsystemid'er.\n\nPersonidenter for gjelderIdent, kravhaverIdent, mottakerIdent og skyldnerIdent angis med enten FNR, DNR, BNR eller NPID.Aktoernummer kan benyttes i kravhaverIdent, mottakerIdent og skyldnerIdent. Aktoernummere er elleve siffer og starter med enten 8 eller 9."
+                "description": "En kontering angir hvor mye som skal betales av skyldner til mottaker på vegne av kravhaver.\n\nKonteringen kan unikt identifiseres med kombinasjonen transaksjonskode, delytelsesId og periode. Det forutsettes at delytelsesid'n er unik også på tvers av fagsystemid'er.\n\nPersonidenter for gjelderIdent, kravhaverIdent, mottakerIdent og skyldnerIdent angis med enten FNR eller DNR. (Håndtering av BNR og NPID er uavklart.) Aktoernummer kan benyttes i kravhaverIdent, mottakerIdent og skyldnerIdent. Aktoernummere er elleve siffer og starter med enten 8 eller 9. \n\nI testmiljøene må Tenor-identer støttes i stedet for FNR/DNR. Disse identene har 8 eller 9 i tredje siffer."
             },
             "Krav": {
                 "required": ["konteringer"],
