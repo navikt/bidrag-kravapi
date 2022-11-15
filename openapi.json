@@ -7,105 +7,202 @@
             "name": "NAV - Team Bidrag",
             "url": "https://github.com/navikt/bidrag-kravapi-stub"
         },
-        "version": "0.2"
+        "version": "0.3"
     },
+    "servers": [{
+            "url": "https://elin.dev.skatteetaten.no/",
+            "description": "Dev-miljø",
+            "variables": {}
+        }
+    ],
     "paths": {
-        "/api/krav": {
+        "/api/vedlikeholdsmodus": {
             "post": {
                 "tags": ["krav-controller"],
-                "summary": "Sende krav",
-                "description": "Operasjon for å levere krav fra NAV til regnskapet hos Skatteetaten. Et krav består av en liste med konteringer. Det forventes at disse konteringen behandles samlet. Det vil si at hvis én av konteringene feiler, skal ingen av konteringene i kravet benyttes.\n\nDersom et krav feiler kan det forsøkes overført på nytt gjentatte ganger inntil kravet er overført. Krav som gjelder samme fagsak må leveres i korrekt rekkefølge. Feiler et krav i en sak, skal ikke senere krav i samme sak overføres. Senere krav i andre saker kan overføres, selv om noen av partene fra den feilende fagsaken er involvert.\n\nDet forventes at et krav alltid inneholder de samme konteringene. Dersom et nytt vedtak fører til et nytt krav som venter på et tidligere feilende krav, skal ikke konteringene fra det seneste kravet slås sammen med det ventende kravet.\n\nNAV har ansvar for å manuelt følge opp krav som ved flere forsøk ikke kan overføres, og vil løse opp i problemet i samarbeid med Skatteetaten.\n\nVed månedlig påløp skal ikke dette grensesnittet benyttes. Tilsvarende krav legges i stedet inn i en fil som overføres til Skatteetaten gjennom filslusa.\n\nFormatet på påløpsfilen skal være tilsvarende det nye grensesnittet, men hvor hvert krav legges inn på egen linje.",
-                "operationId": "lagreKrav",
+                "summary": "Skru av eller på vedlikeholdsmodus",
+                "description": "Operasjonen administrerer vedlikeholdsmodus i tjenesten. Når vedlikeholdsmodus er aktivert vil tjenesten avvise alle ny krav.",
+                "operationId": "vedlikeholdsmodus",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/Krav"
+                                "$ref": "#/components/schemas/Vedlikeholdsmodus"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "400": {
+                        "description": "Dersom klienten ikke er autentisert.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "TOKEN_MANGLER",
+                                    "feilmelding": "Fant ingen token i requesten."
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Oppdateringen av vedlikeholdsmodus er OK.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KravResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Dersom klienten ikke er autentisert.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "TOKEN_MANGLER",
+                                    "feilmelding": "Fant ingen token i requesten."
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Dersom klienten ikke har tilgang. For eksempel at klienten ikke har lov til å skru av vedlikeholdsmodus eller tilgang til den bestemte årsakskoden.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "INGEN_TILGANG",
+                                    "feilmelding": "Ingen tilgang til å deaktivere vedlikeholdsmodus."
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ukjent feil.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "UKJENT_FEIL",
+                                    "feilmelding": "Intern feil"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/krav": {
+            "post": {
+                "tags": ["krav-controller"],
+                "summary": "Sende krav",
+                "description": "Operasjon for å levere en batch med krav fra NAV til regnskapet hos Skatteetaten. En krav-batch består av en liste med krav. Et krav består av en liste med konteringer. Det forventes at disse konteringen behandles samlet. Det vil si at hvis én av konteringene feiler, skal ingen av konteringene i kravet benyttes.\n\nDersom et krav feiler kan det forsøkes overført på nytt gjentatte ganger inntil kravet er overført. Krav som gjelder samme fagsak må leveres i korrekt rekkefølge. Feiler et krav i en sak, skal ikke senere krav i samme sak overføres. Senere krav i andre saker kan overføres, selv om noen av partene fra den feilende fagsaken er involvert.\n\nDet forventes at et krav alltid inneholder de samme konteringene. Dersom et nytt vedtak fører til et nytt krav som venter på et tidligere feilende krav, skal ikke konteringene fra det seneste kravet slås sammen med det ventende kravet.\n\nNAV har ansvar for å manuelt følge opp krav som ved flere forsøk ikke kan overføres, og vil løse opp i problemet i samarbeid med Skatteetaten.\n\nVed månedlig påløp skal ikke dette grensesnittet benyttes. Tilsvarende krav legges i stedet inn i en fil som overføres til Skatteetaten gjennom filslusa. Formatet på påløpsfilen skal leveres på gammelt XML-format, men uten persondata, kun br10.",
+                "operationId": "krav",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/KravBatch"
                             },
                             "examples": {
                                 "Førstegangsfastsettelse bidrag": {
                                     "description": "3 perioder med bidrag og gebyr til begge parter. DelytelsesId er satt til det samme for alle periodene av bidraget. For gebyrkonteringene angir gebyrRolle om gebyret gjelder bidragspliktig eller bidragsmottaker. Gebyrlinjene har forskjellig delytelsesId. Tekst-feltet er kun utfyllt for bidragskonteringene.",
                                     "value": {
-                                        "konteringer": [{
-                                                "transaksjonskode": "B1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 2000,
-                                                "valuta": "NOK",
-                                                "periode": "2022-02",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "tekst": "VII W → 550 → 50 /11",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456789"
-                                            }, {
-                                                "transaksjonskode": "B1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 2000,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "tekst": "VII W → 550 → 50 /11",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456789"
-                                            }, {
-                                                "transaksjonskode": "B1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 2000,
-                                                "valuta": "NOK",
-                                                "periode": "2022-04",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "tekst": "VII W → 550 → 50 /11",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456789"
-                                            }, {
-                                                "transaksjonskode": "G1",
-                                                "type": "NY",
-                                                "gebyrRolle": "BIDRAGSMOTTAKER",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "80000345435",
-                                                "mottakerIdent": "80000345435",
-                                                "skyldnerIdent": "15878598161",
-                                                "belop": 1223,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456790"
-                                            }, {
-                                                "transaksjonskode": "G1",
-                                                "type": "NY",
-                                                "gebyrRolle": "BIDRAGSPLIKTIG",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "80000345435",
-                                                "mottakerIdent": "80000345435",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 1223,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456791"
+                                        "krav": [{
+                                                "konteringer": [{
+                                                        "transaksjonskode": "B1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 2000,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-02",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "tekst": "VII W → 550 → 50 /11",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456789"
+                                                    }, {
+                                                        "transaksjonskode": "B1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 2000,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "tekst": "VII W → 550 → 50 /11",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456789"
+                                                    }, {
+                                                        "transaksjonskode": "B1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 2000,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-04",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "tekst": "VII W → 550 → 50 /11",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456789"
+                                                    }, {
+                                                        "transaksjonskode": "G1",
+                                                        "type": "NY",
+                                                        "soknadType": "FABM",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "80000345435",
+                                                        "mottakerIdent": "80000345435",
+                                                        "skyldnerIdent": "15878598161",
+                                                        "belop": 1223,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456790"
+                                                    }, {
+                                                        "transaksjonskode": "G1",
+                                                        "type": "NY",
+                                                        "soknadType": "FABP",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "80000345435",
+                                                        "mottakerIdent": "80000345435",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 1223,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456791"
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -113,51 +210,57 @@
                                 "Forskudd - førstegangsvedtak": {
                                     "description": "Vedtak om forskudd fattes for første gang 18.03.2022. Vedtaket fattes etter påløp for april har gått, 04.03.2022, så perioden 2022-04 er inkludert i overføringen.",
                                     "value": {
-                                        "konteringer": [{
-                                                "transaksjonskode": "A1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "80000345435",
-                                                "belop": 1710,
-                                                "valuta": "NOK",
-                                                "periode": "2022-02",
-                                                "vedtaksdato": "2022-02-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456788"
-                                            }, {
-                                                "transaksjonskode": "A1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "80000345435",
-                                                "belop": 1710,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-02-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456788"
-                                            }, {
-                                                "transaksjonskode": "A1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "80000345435",
-                                                "belop": 1710,
-                                                "valuta": "NOK",
-                                                "periode": "2022-04",
-                                                "vedtaksdato": "2022-02-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456788"
+                                        "krav": [{
+                                                "konteringer": [{
+                                                        "transaksjonskode": "A1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "80000345435",
+                                                        "belop": 1710,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-02",
+                                                        "vedtaksdato": "2022-02-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456788"
+                                                    }, {
+                                                        "transaksjonskode": "A1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "80000345435",
+                                                        "belop": 1710,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-02-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456788"
+                                                    }, {
+                                                        "transaksjonskode": "A1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "80000345435",
+                                                        "belop": 1710,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-04",
+                                                        "vedtaksdato": "2022-02-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456788"
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -165,66 +268,73 @@
                                 "Forskudd - endring": {
                                     "description": "Det blir fattet nytt vedtak som reduserer forskuddet til ordinær sats fra 01.03.2022. Dermed korrigeres beløpet bort med A3 i periodene 2022-03 og 2022-04. Vedtaksdato blir satt til da endrinen ble utført, 27.03.2022, med delytelsesid hentes fra det første vedtaket. Beløpet for A3-konteringene er negative som betyr at de er fradrag.",
                                     "value": {
-                                        "konteringer": [{
-                                                "transaksjonskode": "A3",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "80000345435",
-                                                "belop": -1710,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-27",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456788"
-                                            }, {
-                                                "transaksjonskode": "A3",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "80000345435",
-                                                "belop": -1710,
-                                                "valuta": "NOK",
-                                                "periode": "2022-04",
-                                                "vedtaksdato": "2022-03-27",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456788"
-                                            }, {
-                                                "transaksjonskode": "A1",
-                                                "type": "NY",
-                                                "gjelderIdent": "29477608467",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "29477608467",
-                                                "skyldnerIdent": "25517038310",
-                                                "belop": 1280,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-27",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456800"
-                                            }, {
-                                                "transaksjonskode": "A1",
-                                                "type": "NY",
-                                                "gjelderIdent": "29477608467",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "29477608467",
-                                                "skyldnerIdent": "25517038310",
-                                                "belop": 1280,
-                                                "valuta": "NOK",
-                                                "periode": "2022-04",
-                                                "vedtaksdato": "2022-03-27",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456800"
+                                        "krav": [{
+                                                "konteringer": [{
+                                                        "transaksjonskode": "A3",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "80000345435",
+                                                        "belop": -1710,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-27",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456788"
+                                                    }, {
+                                                        "transaksjonskode": "A3",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "80000345435",
+                                                        "belop": -1710,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-04",
+                                                        "vedtaksdato": "2022-03-27",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456788"
+                                                    }, {
+                                                        "transaksjonskode": "A1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "29477608467",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "29477608467",
+                                                        "skyldnerIdent": "25517038310",
+                                                        "belop": 1280,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-27",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456800"
+                                                    }, {
+                                                        "transaksjonskode": "A1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "29477608467",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "29477608467",
+                                                        "skyldnerIdent": "25517038310",
+                                                        "belop": 1280,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-04",
+                                                        "vedtaksdato": "2022-03-27",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456800"
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -232,86 +342,92 @@
                                 "Bidrag - førstegangsvedtak": {
                                     "description": "Førstegangsfastsettelse for barnebidrag fra 01.03.2022, med utlandsreferanse.",
                                     "value": {
-                                        "konteringer": [{
-                                                "transaksjonskode": "B1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 2000,
-                                                "valuta": "NOK",
-                                                "periode": "2022-02",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "tekst": "VII W → 550 → 50 /11",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456789"
-                                            }, {
-                                                "transaksjonskode": "B1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 2000,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "tekst": "VII W → 550 → 50 /11",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456789"
-                                            }, {
-                                                "transaksjonskode": "B1",
-                                                "type": "NY",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "14871298182",
-                                                "mottakerIdent": "15878598161",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 2000,
-                                                "valuta": "NOK",
-                                                "periode": "2022-04",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "tekst": "VII W → 550 → 50 /11",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456789"
-                                            }, {
-                                                "transaksjonskode": "G1",
-                                                "type": "NY",
-                                                "gebyrRolle": "BIDRAGSMOTTAKER",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "80000345435",
-                                                "mottakerIdent": "80000345435",
-                                                "skyldnerIdent": "15878598161",
-                                                "belop": 1223,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456790"
-                                            }, {
-                                                "transaksjonskode": "G1",
-                                                "type": "NY",
-                                                "gebyrRolle": "BIDRAGSPLIKTIG",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "80000345435",
-                                                "mottakerIdent": "80000345435",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 1223,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456791"
+                                        "krav": [{
+                                                "konteringer": [{
+                                                        "transaksjonskode": "B1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 2000,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-02",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "tekst": "VII W → 550 → 50 /11",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456789"
+                                                    }, {
+                                                        "transaksjonskode": "B1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 2000,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "tekst": "VII W → 550 → 50 /11",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456789"
+                                                    }, {
+                                                        "transaksjonskode": "B1",
+                                                        "type": "NY",
+                                                        "soknadType": "EN",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "14871298182",
+                                                        "mottakerIdent": "15878598161",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 2000,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-04",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "tekst": "VII W → 550 → 50 /11",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456789"
+                                                    }, {
+                                                        "transaksjonskode": "G1",
+                                                        "type": "NY",
+                                                        "soknadType": "FABM",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "80000345435",
+                                                        "mottakerIdent": "80000345435",
+                                                        "skyldnerIdent": "15878598161",
+                                                        "belop": 1223,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456790"
+                                                    }, {
+                                                        "transaksjonskode": "G1",
+                                                        "type": "NY",
+                                                        "soknadType": "FABP",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "80000345435",
+                                                        "mottakerIdent": "80000345435",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 1223,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456791"
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -319,38 +435,41 @@
                                 "Bidrag - BP klager på gebyr": {
                                     "description": "Bidrag - BP klager på gebyr",
                                     "value": {
-                                        "konteringer": [{
-                                                "transaksjonskode": "G3",
-                                                "type": "ENDRING",
-                                                "gebyrRolle": "BIDRAGSPLIKTIG",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "80000345435",
-                                                "mottakerIdent": "80000345435",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 1223,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456791"
-                                            }, {
-                                                "transaksjonskode": "G1",
-                                                "type": "ENDRING",
-                                                "gebyrRolle": "BIDRAGSPLIKTIG",
-                                                "gjelderIdent": "15878598161",
-                                                "kravhaverIdent": "80000345435",
-                                                "mottakerIdent": "80000345435",
-                                                "skyldnerIdent": "28848596401",
-                                                "belop": 1223,
-                                                "valuta": "NOK",
-                                                "periode": "2022-03",
-                                                "vedtaksdato": "2022-03-18",
-                                                "saksbehandlerId": "a123456",
-                                                "attestantId": "a123456",
-                                                "fagsystemId": "2201234",
-                                                "delytelsesId": "123456792"
+                                        "krav": [{
+                                                "konteringer": [{
+                                                        "transaksjonskode": "G3",
+                                                        "type": "ENDRING",
+                                                        "soknadType": "FABP",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "80000345435",
+                                                        "mottakerIdent": "80000345435",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 1223,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456791"
+                                                    }, {
+                                                        "transaksjonskode": "G1",
+                                                        "type": "ENDRING",
+                                                        "soknadType": "FABP",
+                                                        "gjelderIdent": "15878598161",
+                                                        "kravhaverIdent": "80000345435",
+                                                        "mottakerIdent": "80000345435",
+                                                        "skyldnerIdent": "28848596401",
+                                                        "belop": 1223,
+                                                        "valuta": "NOK",
+                                                        "periode": "2022-03",
+                                                        "vedtaksdato": "2022-03-18",
+                                                        "saksbehandlerId": "a123456",
+                                                        "attestantId": "a123456",
+                                                        "fagsystemId": "2201234",
+                                                        "delytelsesId": "123456792"
+                                                    }
+                                                ]
                                             }
                                         ]
                                     }
@@ -359,6 +478,96 @@
                         }
                     }
                 },
+                "responses": {
+                    "400": {
+                        "description": "Forespørsel er ugyldig.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "UGYLDIG_JSON",
+                                    "feilmelding": "Did not expect ' on line 35, column 3"
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Alle konteringene i kravet er oppdatert OK. Responsen har tom body.\n\nDet forventes også responskode 200 dersom kravet (og dermed konteringene) er overført tidligere.\nDet forventes da at kravet ignoreres slik at ikke konteringene posteres dobbelt.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/KravResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Dersom klienten ikke er autentisert.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "TOKEN_MANGLER",
+                                    "feilmelding": "Fant ingen token i requesten."
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Dersom klienten ikke har tilgang.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "INGEN_TILGANG",
+                                    "feilmelding": "Ingen tilgang med vedlagte token"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ukjent feil.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "UKJENT_FEIL",
+                                    "feilmelding": "Intern feil"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable - Påløpsmodus er på.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "VEDLIKEHOLD_MODUS",
+                                    "feilmelding": "Tjenesten er utilgjengelig under vedlikehold"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/liveness": {
+            "get": {
+                "tags": ["krav-controller"],
+                "summary": "Sjekk behandlingsstatus",
+                "description": "Returnerer behandlingsstatus og mulige feilmeldinger",
+                "operationId": "liveness",
                 "responses": {
                     "400": {
                         "description": "Dersom én av konteringene ikke går gjennom validering forkastes alle konteringene i kravet og en liste over konteringer som har feilet returneres, sammen med informasjon om hva som er feil.\n\nDet er ingen garanti for at konteringer som ikke kommer med på listen over feilede konteringer er feilfrie.",
@@ -371,16 +580,161 @@
                         }
                     },
                     "200": {
-                        "description": "Alle konteringene i kravet er oppdatert OK. Responsen har tom body.\n\nDet forventes også responskode 200 dersom kravet (og dermed konteringene) er overført tidligere. Det forventes da at kravet ignoreres slik at ikke konteringene posteres dobbelt.",
+                        "description": "Tjenesten er OK.",
                         "content": {
                             "application/json": {}
                         }
                     },
                     "401": {
-                        "description": "Dersom klienten ikke er autentisert."
+                        "description": "Dersom klienten ikke er autentisert.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "TOKEN_MANGLER",
+                                    "feilmelding": "Fant ingen token i requesten."
+                                }
+                            }
+                        }
                     },
                     "403": {
-                        "description": "Dersom klienten ikke har tilgang."
+                        "description": "Dersom klienten ikke har tilgang.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "INGEN_TILGANG",
+                                    "feilmelding": "Ingen tilgang med vedlagte token"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ukjent feil. Tjenesten er ikke OK.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "UKJENT_FEIL",
+                                    "feilmelding": "Intern feil"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable - Påløpsmodus er på.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "VEDLIKEHOLD_MODUS",
+                                    "feilmelding": "Tjenesten er utilgjengelig under vedlikehold"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/krav/{batchUid}": {
+            "get": {
+                "tags": ["krav-controller"],
+                "summary": "Sjekk behandlingsstatus",
+                "description": "Returnerer behandlingsstatus og mulige feilmeldinger",
+                "operationId": "kravStatus",
+                "parameters": [{
+                        "name": "batchUid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Forespørsel er ugyldig.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "UGYLDIG_BATCHUID",
+                                    "feilmelding": "Fant ikke batchUid 98969948-a74a-4e89-8162-0403b9cd4f64"
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "Behandlingsstatus for tidligere leverte konteringer.",
+                        "content": {
+                            "application/json": {}
+                        }
+                    },
+                    "401": {
+                        "description": "Dersom klienten ikke er autentisert.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "TOKEN_MANGLER",
+                                    "feilmelding": "Fant ingen token i requesten."
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Dersom klienten ikke har tilgang.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "INGEN_TILGANG",
+                                    "feilmelding": "Ingen tilgang med vedlagte token"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Ukjent feil.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "UKJENT_FEIL",
+                                    "feilmelding": "Intern feil"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable - Påløpsmodus er på.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Feilsituasjon"
+                                },
+                                "example": {
+                                    "feilkode": "VEDLIKEHOLD_MODUS",
+                                    "feilmelding": "Tjenesten er utilgjengelig under vedlikehold"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -442,13 +796,65 @@
                 },
                 "description": "Lister feil i et krav."
             },
+            "KravResponse": {
+                "required": ["batchUid"],
+                "type": "object",
+                "properties": {
+                    "batchUid": {
+                        "type": "string",
+                        "description": "Referanse til prosessering av konteringene.",
+                        "example": "bd27abf5-0632-414d-af4e-47bdecff2c2a"
+                    }
+                },
+                "description": "Svar med referane til videre behandling av konteringene."
+            },
+            "Feilsituasjon": {
+                "required": ["feilkode", "feilmelding"],
+                "type": "object",
+                "properties": {
+                    "feilkode": {
+                        "type": "string",
+                        "description": "En kode som beskriver feilsituasjonen. Koden skal være lik for like situasjoner.",
+                        "example": "UGYLDIG_TOKEN"
+                    },
+                    "feilmelding": {
+                        "type": "string",
+                        "description": "En tekst som beskriver denne konkrete feilsituasjonen. Beskrivelsen bør inneholde nok informasjon til at problemet kan løses.",
+                        "example": "Token utløp 2022-11-01 10:00:00"
+                    }
+                },
+                "description": "Et kall har ført til feilmelding."
+            },
+            "Vedlikeholdsmodus": {
+                "required": ["aarsakKode", "kommentar"],
+                "type": "object",
+                "properties": {
+                    "aktiv": {
+                        "type": "boolean",
+                        "description": "Angir om vedlikeholdsmodus skal skrus på eller ikke",
+                        "example": true,
+                        "default": true
+                    },
+                    "aarsakKode": {
+                        "type": "string",
+                        "description": "Forhåndsavklart kode som beskriver årsaken til vedlikeholdsmodus.\n\nEksempel på årsakskoder:\n| Kode              | Brukes av             | Beskrivelse                                                                      |\n|-------------------|-----------------------|----------------------------------------------------------------------------------|\n| PAALOEP_GENERERES | Bidrag-regnskap (NAV) | Vedlikeholdsmodus startes før påløpsfilen genereres.                             |\n| PAALOEP_LEVERT    | Bidrag-regnskap (NAV) | Vedlikeholdsmodus oppdateres når påløpsfilen er generert og levert til filslusa. |\n| PAALOEP_BEHANDLET | Elin (SKE)            | Vedlikeholdsmodus opphører når Elin er ferdig med å behandle påløpsfilen.        |",
+                        "example": "PAALOP_GENERERES"
+                    },
+                    "kommentar": {
+                        "type": "string",
+                        "description": "Beskriver årsaken til at vedlikeholdsmodus aktiveres/deaktiveres. Feltet er ment for sporingsformål/logg.",
+                        "example": "Påløp for 2022-12 genereres hos NAV."
+                    }
+                },
+                "description": "Kontroll av vedlikeholdsmodus"
+            },
             "Kontering": {
-                "required": ["attestantId", "belop", "delytelsesId", "fagsystemId", "gjelderIdent", "kjoredato", "mottakerIdent", "periode", "saksbehandlerId", "skyldnerIdent", "transaksjonskode", "type", "valuta", "vedtaksdato"],
+                "required": ["attestantId", "belop", "delytelsesId", "fagsystemId", "gjelderIdent", "kjoredato", "mottakerIdent", "periode", "saksbehandlerId", "skyldnerIdent", "soknadType", "transaksjonskode", "type", "valuta", "vedtaksdato"],
                 "type": "object",
                 "properties": {
                     "transaksjonskode": {
                         "type": "string",
-                        "description": "Type transaksjon.\n\nGyldige transaksjonskoder er:\n| Kode  | Korreksjonskode | Beskrivelse                                |\n|-------|-----------------|--------------------------------------------|\n| A1    | A3              | Bidragsforskudd                            |\n| B1    | B3              | Underholdsbidrag (m/u tilleggsbidrag)      |\n| D1    | D3              | 18årsbidrag                                |\n| E1    | E3              | Bidrag til særlige utgifter (særtilskudd)  |\n| F1    | F3              | Ekrefellebidrag                            |\n| G1    | G3              | Gebyr                                      |\n| H1    | H3              | Tilbakekreving                             |\n| I1    |                 | Motregning                                 |\n| K1    |                 | Ettergivelse                               |\n| K2    |                 | Direkte oppgjør (innbetalt beløp)          |\n| K3    |                 | Tilbakekreving ettergivelse                |\n",
+                        "description": "Type transaksjon.\n\nGyldige transaksjonskoder er:\n| Kode  | Korreksjonskode | Beskrivelse                                |\n|-------|-----------------|--------------------------------------------|\n| A1    | A3              | Bidragsforskudd                            |\n| B1    | B3              | Underholdsbidrag (m/u tilleggsbidrag)      |\n| D1    | D3              | 18årsbidrag                                |\n| E1    | E3              | Bidrag til særlige utgifter (særtilskudd)  |\n| F1    | F3              | Ekrefellebidrag                            |\n| G1    | G3              | Gebyr                                      |\n| H1    | H3              | Tilbakekreving                             |\n| I1    |                 | Motregning                                 |\n| K1    |                 | Ettergivelse                               |\n| K2    |                 | Direkte oppgjør (innbetalt beløp)          |\n| K3    |                 | Tilbakekreving ettergivelse                |",
                         "example": "B1"
                     },
                     "type": {
@@ -457,17 +863,10 @@
                         "example": "NY",
                         "enum": ["NY", "ENDRING"]
                     },
-                    "justering": {
+                    "soknadType": {
                         "type": "string",
-                        "description": "Dersom konteringen representerer et justert beløp settes dette feltet. Justeringstypene er INDEKSREGULERING og ALDERSJUSTERING. Dersom konteringen ikke gjelder en av de automatiske justeringstypene blir ikke feltet benyttet. For blant annet Jackson deserialisering i Java gir dette en NULL-verdi for feltet. Feltet settes kun for første måned med justert beløp.",
-                        "example": "INDEKSREULERING",
-                        "enum": ["INDEKSREGULERING", "ALDERSJUSTERING"]
-                    },
-                    "gebyrRolle": {
-                        "type": "string",
-                        "description": "Dersom konteringen gjelder gebyr må feltet settes for å angi om det gjelder gebyr for bidragsmottaker eller bidragspliktig. Dersom konteringen ikke gjelder gebyr (G1 eller G3) blir ikke feltet gebyrRolle benyttet.",
-                        "nullable": true,
-                        "enum": ["BIDRAGSMOTTAKER", "BIDRAGSPLIKTIG"]
+                        "description": "Angirtypen behandling som har ført til konteringen.\n| Kode | Beskrivelse |\n|------|----------------------------------------------------------------------------|\n| IN   | Sendes første måned i et indeksreguleringsvedtak. Etter dette benyttes EN. |\n| FABM | Benyttes for gebyr som gjelder BM.                                         |\n| FABP | Benyttes for gebyr som gjelder BP.                                         |\n| EN   | Alle andre typer endringer. Også førstegangsvedtak.                        |\nLegg merke til at dette er et svært begrenset utvalgt sammenliknet med hva som tidligere ble sendt fra Oppdrag.",
+                        "example": "EN"
                     },
                     "gjelderIdent": {
                         "type": "string",
@@ -490,10 +889,9 @@
                         "example": "28848596401"
                     },
                     "belop": {
-                        "type": "integer",
+                        "type": "number",
                         "description": "Konteringens beløp. Positive beløp og 0 regnes som tillegg, negative beløp som fradrag.",
-                        "format": "int32",
-                        "example": 2000
+                        "example": 2000.0
                     },
                     "valuta": {
                         "type": "string",
@@ -559,6 +957,20 @@
                     }
                 },
                 "description": "Et krav består av en liste med konteringer. "
+            },
+            "KravBatch": {
+                "required": ["krav"],
+                "type": "object",
+                "properties": {
+                    "krav": {
+                        "type": "array",
+                        "description": "Listen med krav.",
+                        "items": {
+                            "$ref": "#/components/schemas/Krav"
+                        }
+                    }
+                },
+                "description": "En sett med krav."
             }
         }
     }

@@ -1,407 +1,608 @@
 openapi: 3.0.1
 info:
   title: Bidragskrav
-  description: >-
-    Grensesnitt for overføring av krav/transaksjoner mellom bidragsområdet og
-    Elin/Navi.
+  description: Grensesnitt for overføring av krav/transaksjoner mellom bidragsområdet
+    og Elin/Navi.
   contact:
     name: NAV - Team Bidrag
     url: https://github.com/navikt/bidrag-kravapi-stub
-  version: '0.2'
+  version: "0.3"
+servers:
+- url: https://elin.dev.skatteetaten.no/
+  description: Dev-miljø
+  variables: {}
 paths:
-  /api/krav:
+  /api/vedlikeholdsmodus:
     post:
       tags:
-        - krav-controller
-      summary: Sende krav
-      description: >-
-        Operasjon for å levere krav fra NAV til regnskapet hos Skatteetaten. Et
-        krav består av en liste med konteringer. Det forventes at disse
-        konteringen behandles samlet. Det vil si at hvis én av konteringene
-        feiler, skal ingen av konteringene i kravet benyttes.
-
-
-        Dersom et krav feiler kan det forsøkes overført på nytt gjentatte ganger
-        inntil kravet er overført. Krav som gjelder samme fagsak må leveres i
-        korrekt rekkefølge. Feiler et krav i en sak, skal ikke senere krav i
-        samme sak overføres. Senere krav i andre saker kan overføres, selv om
-        noen av partene fra den feilende fagsaken er involvert.
-
-
-        Det forventes at et krav alltid inneholder de samme konteringene. Dersom
-        et nytt vedtak fører til et nytt krav som venter på et tidligere
-        feilende krav, skal ikke konteringene fra det seneste kravet slås sammen
-        med det ventende kravet.
-
-
-        NAV har ansvar for å manuelt følge opp krav som ved flere forsøk ikke
-        kan overføres, og vil løse opp i problemet i samarbeid med Skatteetaten.
-
-
-        Ved månedlig påløp skal ikke dette grensesnittet benyttes. Tilsvarende
-        krav legges i stedet inn i en fil som overføres til Skatteetaten gjennom
-        filslusa.
-
-
-        Formatet på påløpsfilen skal være tilsvarende det nye grensesnittet, men
-        hvor hvert krav legges inn på egen linje.
-      operationId: lagreKrav
+      - krav-controller
+      summary: Skru av eller på vedlikeholdsmodus
+      description: Operasjonen administrerer vedlikeholdsmodus i tjenesten. Når vedlikeholdsmodus
+        er aktivert vil tjenesten avvise alle ny krav.
+      operationId: vedlikeholdsmodus
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Krav'
+              $ref: '#/components/schemas/Vedlikeholdsmodus'
+      responses:
+        "400":
+          description: Dersom klienten ikke er autentisert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: TOKEN_MANGLER
+                feilmelding: Fant ingen token i requesten.
+        "200":
+          description: Oppdateringen av vedlikeholdsmodus er OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KravResponse'
+        "401":
+          description: Dersom klienten ikke er autentisert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: TOKEN_MANGLER
+                feilmelding: Fant ingen token i requesten.
+        "403":
+          description: Dersom klienten ikke har tilgang. For eksempel at klienten
+            ikke har lov til å skru av vedlikeholdsmodus eller tilgang til den bestemte
+            årsakskoden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: INGEN_TILGANG
+                feilmelding: Ingen tilgang til å deaktivere vedlikeholdsmodus.
+        "500":
+          description: Ukjent feil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: UKJENT_FEIL
+                feilmelding: Intern feil
+  /api/krav:
+    post:
+      tags:
+      - krav-controller
+      summary: Sende krav
+      description: |-
+        Operasjon for å levere en batch med krav fra NAV til regnskapet hos Skatteetaten. En krav-batch består av en liste med krav. Et krav består av en liste med konteringer. Det forventes at disse konteringen behandles samlet. Det vil si at hvis én av konteringene feiler, skal ingen av konteringene i kravet benyttes.
+
+        Dersom et krav feiler kan det forsøkes overført på nytt gjentatte ganger inntil kravet er overført. Krav som gjelder samme fagsak må leveres i korrekt rekkefølge. Feiler et krav i en sak, skal ikke senere krav i samme sak overføres. Senere krav i andre saker kan overføres, selv om noen av partene fra den feilende fagsaken er involvert.
+
+        Det forventes at et krav alltid inneholder de samme konteringene. Dersom et nytt vedtak fører til et nytt krav som venter på et tidligere feilende krav, skal ikke konteringene fra det seneste kravet slås sammen med det ventende kravet.
+
+        NAV har ansvar for å manuelt følge opp krav som ved flere forsøk ikke kan overføres, og vil løse opp i problemet i samarbeid med Skatteetaten.
+
+        Ved månedlig påløp skal ikke dette grensesnittet benyttes. Tilsvarende krav legges i stedet inn i en fil som overføres til Skatteetaten gjennom filslusa. Formatet på påløpsfilen skal leveres på gammelt XML-format, men uten persondata, kun br10.
+      operationId: krav
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KravBatch'
             examples:
               Førstegangsfastsettelse bidrag:
-                description: >-
-                  3 perioder med bidrag og gebyr til begge parter. DelytelsesId
-                  er satt til det samme for alle periodene av bidraget. For
-                  gebyrkonteringene angir gebyrRolle om gebyret gjelder
-                  bidragspliktig eller bidragsmottaker. Gebyrlinjene har
-                  forskjellig delytelsesId. Tekst-feltet er kun utfyllt for
-                  bidragskonteringene.
+                description: 3 perioder med bidrag og gebyr til begge parter. DelytelsesId
+                  er satt til det samme for alle periodene av bidraget. For gebyrkonteringene
+                  angir gebyrRolle om gebyret gjelder bidragspliktig eller bidragsmottaker.
+                  Gebyrlinjene har forskjellig delytelsesId. Tekst-feltet er kun utfyllt
+                  for bidragskonteringene.
                 value:
-                  konteringer:
+                  krav:
+                  - konteringer:
                     - transaksjonskode: B1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '28848596401'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "28848596401"
                       belop: 2000
                       valuta: NOK
                       periode: 2022-02
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
                       tekst: VII W → 550 → 50 /11
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456789'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456789"
                     - transaksjonskode: B1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '28848596401'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "28848596401"
                       belop: 2000
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
                       tekst: VII W → 550 → 50 /11
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456789'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456789"
                     - transaksjonskode: B1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '28848596401'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "28848596401"
                       belop: 2000
                       valuta: NOK
                       periode: 2022-04
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
                       tekst: VII W → 550 → 50 /11
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456789'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456789"
                     - transaksjonskode: G1
                       type: NY
-                      gebyrRolle: BIDRAGSMOTTAKER
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '80000345435'
-                      mottakerIdent: '80000345435'
-                      skyldnerIdent: '15878598161'
+                      soknadType: FABM
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "80000345435"
+                      mottakerIdent: "80000345435"
+                      skyldnerIdent: "15878598161"
                       belop: 1223
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456790'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456790"
                     - transaksjonskode: G1
                       type: NY
-                      gebyrRolle: BIDRAGSPLIKTIG
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '80000345435'
-                      mottakerIdent: '80000345435'
-                      skyldnerIdent: '28848596401'
+                      soknadType: FABP
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "80000345435"
+                      mottakerIdent: "80000345435"
+                      skyldnerIdent: "28848596401"
                       belop: 1223
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456791'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456791"
               Forskudd - førstegangsvedtak:
-                description: >-
-                  Vedtak om forskudd fattes for første gang 18.03.2022. Vedtaket
-                  fattes etter påløp for april har gått, 04.03.2022, så perioden
-                  2022-04 er inkludert i overføringen.
+                description: "Vedtak om forskudd fattes for første gang 18.03.2022.\
+                  \ Vedtaket fattes etter påløp for april har gått, 04.03.2022, så\
+                  \ perioden 2022-04 er inkludert i overføringen."
                 value:
-                  konteringer:
+                  krav:
+                  - konteringer:
                     - transaksjonskode: A1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '80000345435'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "80000345435"
                       belop: 1710
                       valuta: NOK
                       periode: 2022-02
-                      vedtaksdato: '2022-02-18'
+                      vedtaksdato: 2022-02-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456788'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456788"
                     - transaksjonskode: A1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '80000345435'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "80000345435"
                       belop: 1710
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-02-18'
+                      vedtaksdato: 2022-02-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456788'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456788"
                     - transaksjonskode: A1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '80000345435'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "80000345435"
                       belop: 1710
                       valuta: NOK
                       periode: 2022-04
-                      vedtaksdato: '2022-02-18'
+                      vedtaksdato: 2022-02-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456788'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456788"
               Forskudd - endring:
-                description: >-
-                  Det blir fattet nytt vedtak som reduserer forskuddet til
-                  ordinær sats fra 01.03.2022. Dermed korrigeres beløpet bort
-                  med A3 i periodene 2022-03 og 2022-04. Vedtaksdato blir satt
-                  til da endrinen ble utført, 27.03.2022, med delytelsesid
-                  hentes fra det første vedtaket. Beløpet for A3-konteringene er
-                  negative som betyr at de er fradrag.
+                description: "Det blir fattet nytt vedtak som reduserer forskuddet\
+                  \ til ordinær sats fra 01.03.2022. Dermed korrigeres beløpet bort\
+                  \ med A3 i periodene 2022-03 og 2022-04. Vedtaksdato blir satt til\
+                  \ da endrinen ble utført, 27.03.2022, med delytelsesid hentes fra\
+                  \ det første vedtaket. Beløpet for A3-konteringene er negative som\
+                  \ betyr at de er fradrag."
                 value:
-                  konteringer:
+                  krav:
+                  - konteringer:
                     - transaksjonskode: A3
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '80000345435'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "80000345435"
                       belop: -1710
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-27'
+                      vedtaksdato: 2022-03-27
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456788'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456788"
                     - transaksjonskode: A3
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '80000345435'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "80000345435"
                       belop: -1710
                       valuta: NOK
                       periode: 2022-04
-                      vedtaksdato: '2022-03-27'
+                      vedtaksdato: 2022-03-27
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456788'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456788"
                     - transaksjonskode: A1
                       type: NY
-                      gjelderIdent: '29477608467'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '29477608467'
-                      skyldnerIdent: '25517038310'
+                      soknadType: EN
+                      gjelderIdent: "29477608467"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "29477608467"
+                      skyldnerIdent: "25517038310"
                       belop: 1280
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-27'
+                      vedtaksdato: 2022-03-27
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456800'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456800"
                     - transaksjonskode: A1
                       type: NY
-                      gjelderIdent: '29477608467'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '29477608467'
-                      skyldnerIdent: '25517038310'
+                      soknadType: EN
+                      gjelderIdent: "29477608467"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "29477608467"
+                      skyldnerIdent: "25517038310"
                       belop: 1280
                       valuta: NOK
                       periode: 2022-04
-                      vedtaksdato: '2022-03-27'
+                      vedtaksdato: 2022-03-27
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456800'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456800"
               Bidrag - førstegangsvedtak:
-                description: >-
-                  Førstegangsfastsettelse for barnebidrag fra 01.03.2022, med
-                  utlandsreferanse.
+                description: "Førstegangsfastsettelse for barnebidrag fra 01.03.2022,\
+                  \ med utlandsreferanse."
                 value:
-                  konteringer:
+                  krav:
+                  - konteringer:
                     - transaksjonskode: B1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '28848596401'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "28848596401"
                       belop: 2000
                       valuta: NOK
                       periode: 2022-02
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
                       tekst: VII W → 550 → 50 /11
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456789'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456789"
                     - transaksjonskode: B1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '28848596401'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "28848596401"
                       belop: 2000
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
                       tekst: VII W → 550 → 50 /11
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456789'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456789"
                     - transaksjonskode: B1
                       type: NY
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '14871298182'
-                      mottakerIdent: '15878598161'
-                      skyldnerIdent: '28848596401'
+                      soknadType: EN
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "14871298182"
+                      mottakerIdent: "15878598161"
+                      skyldnerIdent: "28848596401"
                       belop: 2000
                       valuta: NOK
                       periode: 2022-04
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
                       tekst: VII W → 550 → 50 /11
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456789'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456789"
                     - transaksjonskode: G1
                       type: NY
-                      gebyrRolle: BIDRAGSMOTTAKER
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '80000345435'
-                      mottakerIdent: '80000345435'
-                      skyldnerIdent: '15878598161'
+                      soknadType: FABM
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "80000345435"
+                      mottakerIdent: "80000345435"
+                      skyldnerIdent: "15878598161"
                       belop: 1223
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456790'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456790"
                     - transaksjonskode: G1
                       type: NY
-                      gebyrRolle: BIDRAGSPLIKTIG
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '80000345435'
-                      mottakerIdent: '80000345435'
-                      skyldnerIdent: '28848596401'
+                      soknadType: FABP
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "80000345435"
+                      mottakerIdent: "80000345435"
+                      skyldnerIdent: "28848596401"
                       belop: 1223
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456791'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456791"
               Bidrag - BP klager på gebyr:
                 description: Bidrag - BP klager på gebyr
                 value:
-                  konteringer:
+                  krav:
+                  - konteringer:
                     - transaksjonskode: G3
                       type: ENDRING
-                      gebyrRolle: BIDRAGSPLIKTIG
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '80000345435'
-                      mottakerIdent: '80000345435'
-                      skyldnerIdent: '28848596401'
+                      soknadType: FABP
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "80000345435"
+                      mottakerIdent: "80000345435"
+                      skyldnerIdent: "28848596401"
                       belop: 1223
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456791'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456791"
                     - transaksjonskode: G1
                       type: ENDRING
-                      gebyrRolle: BIDRAGSPLIKTIG
-                      gjelderIdent: '15878598161'
-                      kravhaverIdent: '80000345435'
-                      mottakerIdent: '80000345435'
-                      skyldnerIdent: '28848596401'
+                      soknadType: FABP
+                      gjelderIdent: "15878598161"
+                      kravhaverIdent: "80000345435"
+                      mottakerIdent: "80000345435"
+                      skyldnerIdent: "28848596401"
                       belop: 1223
                       valuta: NOK
                       periode: 2022-03
-                      vedtaksdato: '2022-03-18'
+                      vedtaksdato: 2022-03-18
                       saksbehandlerId: a123456
                       attestantId: a123456
-                      fagsystemId: '2201234'
-                      delytelsesId: '123456792'
+                      fagsystemId: "2201234"
+                      delytelsesId: "123456792"
       responses:
-        '200':
-          description: >-
+        "400":
+          description: Forespørsel er ugyldig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: UGYLDIG_JSON
+                feilmelding: "Did not expect ' on line 35, column 3"
+        "202":
+          description: |-
             Alle konteringene i kravet er oppdatert OK. Responsen har tom body.
 
-
-            Det forventes også responskode 200 dersom kravet (og dermed
-            konteringene) er overført tidligere. Det forventes da at kravet
-            ignoreres slik at ikke konteringene posteres dobbelt.
+            Det forventes også responskode 200 dersom kravet (og dermed konteringene) er overført tidligere.
+            Det forventes da at kravet ignoreres slik at ikke konteringene posteres dobbelt.
           content:
-            application/json: {}
-        '400':
-          description: >-
-            Dersom én av konteringene ikke går gjennom validering forkastes alle
-            konteringene i kravet og en liste over konteringer som har feilet
-            returneres, sammen med informasjon om hva som er feil.
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KravResponse'
+        "401":
+          description: Dersom klienten ikke er autentisert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: TOKEN_MANGLER
+                feilmelding: Fant ingen token i requesten.
+        "403":
+          description: Dersom klienten ikke har tilgang.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: INGEN_TILGANG
+                feilmelding: Ingen tilgang med vedlagte token
+        "500":
+          description: Ukjent feil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: UKJENT_FEIL
+                feilmelding: Intern feil
+        "503":
+          description: Service unavailable - Påløpsmodus er på.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: VEDLIKEHOLD_MODUS
+                feilmelding: Tjenesten er utilgjengelig under vedlikehold
+  /api/liveness:
+    get:
+      tags:
+      - krav-controller
+      summary: Sjekk behandlingsstatus
+      description: Returnerer behandlingsstatus og mulige feilmeldinger
+      operationId: liveness
+      responses:
+        "400":
+          description: |-
+            Dersom én av konteringene ikke går gjennom validering forkastes alle konteringene i kravet og en liste over konteringer som har feilet returneres, sammen med informasjon om hva som er feil.
 
-
-            Det er ingen garanti for at konteringer som ikke kommer med på
-            listen over feilede konteringer er feilfrie.
+            Det er ingen garanti for at konteringer som ikke kommer med på listen over feilede konteringer er feilfrie.
           content:
             '*/*':
               schema:
                 $ref: '#/components/schemas/Kravfeil'
-        '401':
+        "200":
+          description: Tjenesten er OK.
+          content:
+            application/json: {}
+        "401":
           description: Dersom klienten ikke er autentisert.
-        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: TOKEN_MANGLER
+                feilmelding: Fant ingen token i requesten.
+        "403":
           description: Dersom klienten ikke har tilgang.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: INGEN_TILGANG
+                feilmelding: Ingen tilgang med vedlagte token
+        "500":
+          description: Ukjent feil. Tjenesten er ikke OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: UKJENT_FEIL
+                feilmelding: Intern feil
+        "503":
+          description: Service unavailable - Påløpsmodus er på.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: VEDLIKEHOLD_MODUS
+                feilmelding: Tjenesten er utilgjengelig under vedlikehold
+  /api/krav/{batchUid}:
+    get:
+      tags:
+      - krav-controller
+      summary: Sjekk behandlingsstatus
+      description: Returnerer behandlingsstatus og mulige feilmeldinger
+      operationId: kravStatus
+      parameters:
+      - name: batchUid
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "400":
+          description: Forespørsel er ugyldig.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: UGYLDIG_BATCHUID
+                feilmelding: Fant ikke batchUid 98969948-a74a-4e89-8162-0403b9cd4f64
+        "200":
+          description: Behandlingsstatus for tidligere leverte konteringer.
+          content:
+            application/json: {}
+        "401":
+          description: Dersom klienten ikke er autentisert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: TOKEN_MANGLER
+                feilmelding: Fant ingen token i requesten.
+        "403":
+          description: Dersom klienten ikke har tilgang.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: INGEN_TILGANG
+                feilmelding: Ingen tilgang med vedlagte token
+        "500":
+          description: Ukjent feil.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: UKJENT_FEIL
+                feilmelding: Intern feil
+        "503":
+          description: Service unavailable - Påløpsmodus er på.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feilsituasjon'
+              example:
+                feilkode: VEDLIKEHOLD_MODUS
+                feilmelding: Tjenesten er utilgjengelig under vedlikehold
 components:
   schemas:
     KonteringId:
       required:
-        - delytelsesId
-        - periode
-        - transaksjonskode
+      - delytelsesId
+      - periode
+      - transaksjonskode
       type: object
       properties:
         transaksjonskode:
@@ -415,27 +616,24 @@ components:
           example: 2022-04
         delytelsesId:
           type: string
-          description: >-
-            Unik referanse til perioden i vedtaket. I bidragssaken kan en
-            periode strekke over flere måneder, og samme referanse blir da
-            benyttet for alle månedene. Samme referanse kan ikke benyttes to
-            ganger for samme transaksjonskode i samme måned.
-          example: '123456789'
+          description: "Unik referanse til perioden i vedtaket. I bidragssaken kan\
+            \ en periode strekke over flere måneder, og samme referanse blir da benyttet\
+            \ for alle månedene. Samme referanse kan ikke benyttes to ganger for samme\
+            \ transaksjonskode i samme måned."
+          example: "123456789"
       description: Identifiserer en kontering unikt.
     Konteringsfeil:
       type: object
       properties:
         feilkode:
           type: string
-          description: >-
-            En kode som angir type feil som har oppstått. Feilkoden er ment å
-            kunne brukes til å maskinelt sortere feil.
+          description: En kode som angir type feil som har oppstått. Feilkoden er
+            ment å kunne brukes til å maskinelt sortere feil.
           example: TOLKNING
         feilmelding:
           type: string
-          description: >-
-            En beskrivelse av feilen som har oppstått. Feilmeldingen er ment å
-            være forståelig for et menneske ved manuell gjennomgang.
+          description: En beskrivelse av feilen som har oppstått. Feilmeldingen er
+            ment å være forståelig for et menneske ved manuell gjennomgang.
           example: Tolkning feilet i Elin.
         kontering:
           $ref: '#/components/schemas/KonteringId'
@@ -448,145 +646,154 @@ components:
           items:
             $ref: '#/components/schemas/Konteringsfeil'
       description: Lister feil i et krav.
+    KravResponse:
+      required:
+      - batchUid
+      type: object
+      properties:
+        batchUid:
+          type: string
+          description: Referanse til prosessering av konteringene.
+          example: bd27abf5-0632-414d-af4e-47bdecff2c2a
+      description: Svar med referane til videre behandling av konteringene.
+    Feilsituasjon:
+      required:
+      - feilkode
+      - feilmelding
+      type: object
+      properties:
+        feilkode:
+          type: string
+          description: En kode som beskriver feilsituasjonen. Koden skal være lik
+            for like situasjoner.
+          example: UGYLDIG_TOKEN
+        feilmelding:
+          type: string
+          description: En tekst som beskriver denne konkrete feilsituasjonen. Beskrivelsen
+            bør inneholde nok informasjon til at problemet kan løses.
+          example: Token utløp 2022-11-01 10:00:00
+      description: Et kall har ført til feilmelding.
+    Vedlikeholdsmodus:
+      required:
+      - aarsakKode
+      - kommentar
+      type: object
+      properties:
+        aktiv:
+          type: boolean
+          description: Angir om vedlikeholdsmodus skal skrus på eller ikke
+          example: true
+          default: true
+        aarsakKode:
+          type: string
+          description: |-
+            Forhåndsavklart kode som beskriver årsaken til vedlikeholdsmodus.
+
+            Eksempel på årsakskoder:
+            | Kode              | Brukes av             | Beskrivelse                                                                      |
+            |-------------------|-----------------------|----------------------------------------------------------------------------------|
+            | PAALOEP_GENERERES | Bidrag-regnskap (NAV) | Vedlikeholdsmodus startes før påløpsfilen genereres.                             |
+            | PAALOEP_LEVERT    | Bidrag-regnskap (NAV) | Vedlikeholdsmodus oppdateres når påløpsfilen er generert og levert til filslusa. |
+            | PAALOEP_BEHANDLET | Elin (SKE)            | Vedlikeholdsmodus opphører når Elin er ferdig med å behandle påløpsfilen.        |
+          example: PAALOP_GENERERES
+        kommentar:
+          type: string
+          description: Beskriver årsaken til at vedlikeholdsmodus aktiveres/deaktiveres.
+            Feltet er ment for sporingsformål/logg.
+          example: Påløp for 2022-12 genereres hos NAV.
+      description: Kontroll av vedlikeholdsmodus
     Kontering:
       required:
-        - attestantId
-        - belop
-        - delytelsesId
-        - fagsystemId
-        - gjelderIdent
-        - kjoredato
-        - mottakerIdent
-        - periode
-        - saksbehandlerId
-        - skyldnerIdent
-        - transaksjonskode
-        - type
-        - valuta
-        - vedtaksdato
+      - attestantId
+      - belop
+      - delytelsesId
+      - fagsystemId
+      - gjelderIdent
+      - kjoredato
+      - mottakerIdent
+      - periode
+      - saksbehandlerId
+      - skyldnerIdent
+      - soknadType
+      - transaksjonskode
+      - type
+      - valuta
+      - vedtaksdato
       type: object
       properties:
         transaksjonskode:
           type: string
-          description: >
+          description: |-
             Type transaksjon.
 
-
             Gyldige transaksjonskoder er:
-
-            | Kode  | Korreksjonskode |
-            Beskrivelse                                |
-
+            | Kode  | Korreksjonskode | Beskrivelse                                |
             |-------|-----------------|--------------------------------------------|
-
-            | A1    | A3              |
-            Bidragsforskudd                            |
-
-            | B1    | B3              | Underholdsbidrag (m/u
-            tilleggsbidrag)      |
-
-            | D1    | D3              |
-            18årsbidrag                                |
-
-            | E1    | E3              | Bidrag til særlige utgifter
-            (særtilskudd)  |
-
-            | F1    | F3              |
-            Ekrefellebidrag                            |
-
-            | G1    | G3              |
-            Gebyr                                      |
-
-            | H1    | H3              |
-            Tilbakekreving                             |
-
-            | I1    |                 |
-            Motregning                                 |
-
-            | K1    |                 |
-            Ettergivelse                               |
-
-            | K2    |                 | Direkte oppgjør (innbetalt
-            beløp)          |
-
-            | K3    |                 | Tilbakekreving
-            ettergivelse                |
+            | A1    | A3              | Bidragsforskudd                            |
+            | B1    | B3              | Underholdsbidrag (m/u tilleggsbidrag)      |
+            | D1    | D3              | 18årsbidrag                                |
+            | E1    | E3              | Bidrag til særlige utgifter (særtilskudd)  |
+            | F1    | F3              | Ekrefellebidrag                            |
+            | G1    | G3              | Gebyr                                      |
+            | H1    | H3              | Tilbakekreving                             |
+            | I1    |                 | Motregning                                 |
+            | K1    |                 | Ettergivelse                               |
+            | K2    |                 | Direkte oppgjør (innbetalt beløp)          |
+            | K3    |                 | Tilbakekreving ettergivelse                |
           example: B1
         type:
           type: string
-          description: >-
-            Konteringstypen er NY for nye konteringer for en stønad i en
-            periode. Deretter skal alle konteringer for samme stønad i samme
-            periode markere ENDRING, altså B3-konteringen og for alle påfølgende
-            B1-konteringer.
+          description: "Konteringstypen er NY for nye konteringer for en stønad i\
+            \ en periode. Deretter skal alle konteringer for samme stønad i samme\
+            \ periode markere ENDRING, altså B3-konteringen og for alle påfølgende\
+            \ B1-konteringer."
           example: NY
           enum:
-            - NY
-            - ENDRING
-        justering:
+          - NY
+          - ENDRING
+        soknadType:
           type: string
-          description: >-
-            Dersom konteringen representerer et justert beløp settes dette
-            feltet. Justeringstypene er INDEKSREGULERING og ALDERSJUSTERING.
-            Dersom konteringen ikke gjelder en av de automatiske
-            justeringstypene blir ikke feltet benyttet. For blant annet Jackson
-            deserialisering i Java gir dette en NULL-verdi for feltet. Feltet
-            settes kun for første måned med justert beløp.
-          example: INDEKSREULERING
-          enum:
-            - INDEKSREGULERING
-            - ALDERSJUSTERING
-        gebyrRolle:
-          type: string
-          description: >-
-            Dersom konteringen gjelder gebyr må feltet settes for å angi om det
-            gjelder gebyr for bidragsmottaker eller bidragspliktig. Dersom
-            konteringen ikke gjelder gebyr (G1 eller G3) blir ikke feltet
-            gebyrRolle benyttet.
-          nullable: true
-          enum:
-            - BIDRAGSMOTTAKER
-            - BIDRAGSPLIKTIG
+          description: |-
+            Angirtypen behandling som har ført til konteringen.
+            | Kode | Beskrivelse |
+            |------|----------------------------------------------------------------------------|
+            | IN   | Sendes første måned i et indeksreguleringsvedtak. Etter dette benyttes EN. |
+            | FABM | Benyttes for gebyr som gjelder BM.                                         |
+            | FABP | Benyttes for gebyr som gjelder BP.                                         |
+            | EN   | Alle andre typer endringer. Også førstegangsvedtak.                        |
+            Legg merke til at dette er et svært begrenset utvalgt sammenliknet med hva som tidligere ble sendt fra Oppdrag.
+          example: EN
         gjelderIdent:
           type: string
-          description: >-
-            Personident (FNR/DNR) til bidragsmottaker i bidragssaken. I saker
-            der bidragsmottaker ikke er satt benyttes et dummynr 22222222226
-          example: '15878598161'
+          description: Personident (FNR/DNR) til bidragsmottaker i bidragssaken. I
+            saker der bidragsmottaker ikke er satt benyttes et dummynr 22222222226
+          example: "15878598161"
         kravhaverIdent:
           type: string
-          description: >-
-            Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til
-            kravhaver.
-
+          description: |-
+            Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til kravhaver.
 
             Kravhaver angis ikke for gebyr.
-          example: '14871298182'
+          example: "14871298182"
         mottakerIdent:
           type: string
-          description: >-
-            Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til
-            mottaker av kravet.
-
+          description: |-
+            Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til mottaker av kravet.
 
             For gebyr settes mottakerIdent til NAVs aktoernummer 80000345435.
-          example: '15878598161'
+          example: "15878598161"
         skyldnerIdent:
           type: string
-          description: >-
-            Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til
-            skyldner. For Bidrag er dette BP i saken.
-
+          description: |-
+            Personident (FNR/DNR) eller aktoernummer (TSS-ident/samhandler) til skyldner. For Bidrag er dette BP i saken.
 
             For forskudd settes skyldnerIdent til NAVs aktoernummer 80000345435.
-          example: '28848596401'
+          example: "28848596401"
         belop:
-          type: integer
-          description: >-
-            Konteringens beløp. Positive beløp og 0 regnes som tillegg, negative
-            beløp som fradrag.
-          format: int32
-          example: 2000
+          type: number
+          description: "Konteringens beløp. Positive beløp og 0 regnes som tillegg,\
+            \ negative beløp som fradrag."
+          example: 2000.0
         valuta:
           type: string
           description: Valutakoden for beløpet.
@@ -600,69 +807,53 @@ components:
           type: string
           description: Datoen vedtaket er fattet
           format: date
-          example: '2022-03-18'
+          example: 2022-03-18
         kjoredato:
           type: string
-          description: >-
-            Datoen kravet/konteringen gjøres klart for overføring. For
-            direkteoverførte online-vedtak blir datoen sannsynligvis det samme
-            som vedtaksdato. For påløp blir datoen satt til dagen påløpet
-            genereres.
+          description: Datoen kravet/konteringen gjøres klart for overføring. For
+            direkteoverførte online-vedtak blir datoen sannsynligvis det samme som
+            vedtaksdato. For påløp blir datoen satt til dagen påløpet genereres.
           format: date
-          example: '2022-03-18'
+          example: 2022-03-18
         saksbehandlerId:
           type: string
           description: NAVs brukerid for saksbehandler som har fattet vedtaket
           example: a123456
         attestantId:
           type: string
-          description: >-
-            NAVs brukerid for saksbehandler som har attestert vedtaket
+          description: NAVs brukerid for saksbehandler som har attestert vedtaket
             (sannsynligvis samme som saksbehandlerId over).
           example: a123456
         tekst:
           type: string
-          description: >-
-            Felt hvor utlandsavdelingen legger inn referansenummer (ffu-ref).
-            Dette er et fritekstfelt som kan inneholde spesialtegn.
-
+          description: |-
+            Felt hvor utlandsavdelingen legger inn referansenummer (ffu-ref). Dette er et fritekstfelt som kan inneholde spesialtegn.
 
             TODO: Bedre navn på feltet? Hva blir riktig regnskapsmessig?
           example: VII W → 450 → 40 /11
         fagsystemId:
           type: string
           description: Bidragssakens saksnummer angitt som String.
-          example: '2201234'
+          example: "2201234"
         delytelsesId:
           type: string
-          description: >-
-            Unik referanse til perioden i vedtaket angitt som String. I
-            bidragssaken kan en periode strekke over flere måneder, og samme
-            referanse blir da benyttet for alle månedene. Samme referanse kan
-            ikke benyttes to ganger for samme transaksjonskode i samme måned.
-          example: '123456789'
-      description: >-
-        En kontering angir hvor mye som skal betales av skyldner til mottaker på
-        vegne av kravhaver.
-
-
-        Konteringen kan unikt identifiseres med kombinasjonen transaksjonskode,
-        delytelsesId og periode. Det forutsettes at delytelsesid'n er unik også
-        på tvers av fagsystemid'er.
-
-
-        Personidenter for gjelderIdent, kravhaverIdent, mottakerIdent og
-        skyldnerIdent angis med enten FNR eller DNR. (Håndtering av BNR og NPID
-        er uavklart.) Aktoernummer kan benyttes i kravhaverIdent, mottakerIdent
-        og skyldnerIdent. Aktoernummere er elleve siffer og starter med enten 8
-        eller 9. 
-
-
-        I testmiljøene må Tenor-identer støttes i stedet for FNR/DNR. Disse
-        identene har 8 eller 9 i tredje siffer.
+          description: "Unik referanse til perioden i vedtaket angitt som String.\
+            \ I bidragssaken kan en periode strekke over flere måneder, og samme referanse\
+            \ blir da benyttet for alle månedene. Samme referanse kan ikke benyttes\
+            \ to ganger for samme transaksjonskode i samme måned."
+          example: "123456789"
+      description: "En kontering angir hvor mye som skal betales av skyldner til mottaker\
+        \ på vegne av kravhaver.\n\nKonteringen kan unikt identifiseres med kombinasjonen\
+        \ transaksjonskode, delytelsesId og periode. Det forutsettes at delytelsesid'n\
+        \ er unik også på tvers av fagsystemid'er.\n\nPersonidenter for gjelderIdent,\
+        \ kravhaverIdent, mottakerIdent og skyldnerIdent angis med enten FNR eller\
+        \ DNR. (Håndtering av BNR og NPID er uavklart.) Aktoernummer kan benyttes\
+        \ i kravhaverIdent, mottakerIdent og skyldnerIdent. Aktoernummere er elleve\
+        \ siffer og starter med enten 8 eller 9. \n\nI testmiljøene må Tenor-identer\
+        \ støttes i stedet for FNR/DNR. Disse identene har 8 eller 9 i tredje siffer."
     Krav:
       required:
-        - konteringer
+      - konteringer
       type: object
       properties:
         konteringer:
@@ -671,3 +862,14 @@ components:
           items:
             $ref: '#/components/schemas/Kontering'
       description: 'Et krav består av en liste med konteringer. '
+    KravBatch:
+      required:
+      - krav
+      type: object
+      properties:
+        krav:
+          type: array
+          description: Listen med krav.
+          items:
+            $ref: '#/components/schemas/Krav'
+      description: En sett med krav.
