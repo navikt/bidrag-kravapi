@@ -8,8 +8,14 @@ info:
     url: https://github.com/navikt/bidrag-kravapi-stub
   version: "0.3"
 servers:
-- url: https://elin.dev.skatteetaten.no/
-  description: Dev-miljø
+- url: https://api-preprod.nav.no/bidrag/v1/bidragskrav
+  description: Q1
+  variables: {}
+- url: https://api-preprod.nav.no/bidrag/v1/bidragskravq2
+  description: Q2
+  variables: {}
+- url: https://api-preprod.nav.no/bidrag/v1/bidragskravq4
+  description: Q4
   variables: {}
 paths:
   /api/vedlikeholdsmodus:
